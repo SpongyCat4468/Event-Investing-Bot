@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 
 import commands
+import help
 
 
 load_dotenv()
@@ -15,6 +16,7 @@ bot = cmd.Bot(command_prefix='!', intents=intents)
 async def on_ready():
     print(f'Logged in as {bot.user}')
     commands.setup(bot)
+    help.setup(bot)
     await bot.tree.sync()
 
 bot.run(os.getenv('TOKEN'))

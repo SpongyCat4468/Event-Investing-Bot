@@ -1,13 +1,34 @@
 import requests
 import json
+import discord
+from discord import app_commands
 
 API_LINK = "http://127.0.0.1:8000"
 
 
 # ── Mapping ───────────────────────────────────────────────────────────────────
 
-def get_team_name(user_id) -> str:
-    """Map a Discord user_id to a team name by looking up id.json."""
+def get_leaderboard() -> dict[str, float]:
+    """Return teams ranked by total portfolio value as an ordered dict."""
+    response = requests.get(f"{API_LINK}/leaderboard")
+    response.raise_for_status()
+    return {team["name"]: team["total_portfolio_value"] for team in response.json()}
+
+def get_team_name(id: int | str) -> str:
+    if id.__class__ == int:
+        """Map a Discord user_id to a team name by looking up id.json."""
+        with open("id.json", "r") as f:
+            id_map: dict = json.load(f)
+        team = id_map.get(str(id))
+        if team is None:
+            raise ValueError(f"User ID {id} is not registered in id.json")
+        teams = {"Zeroth": "零小", "First": "一小", "Second": "二小"}
+        return teams[team]
+    elif id.__class__ == str:
+        teams = {"Zeroth": "零小", "First": "一小", "Second": "二小"}
+        return teams[id]
+
+def get_team_id(user_id) -> str:
     with open("id.json", "r") as f:
         id_map: dict = json.load(f)
     team = id_map.get(str(user_id))
@@ -18,39 +39,71 @@ def get_team_name(user_id) -> str:
 
 # ── Trading ───────────────────────────────────────────────────────────────────
 
-def buy(user_id, crypto_name: str, amount: float) -> dict:
+def buy(user_id, crypto_name: str, amount: float) -> discord.Embed:
     """Buy `amount` units of `crypto_name` for the team linked to `user_id`."""
+    if amount <= 0:
+        return discord.Embed(title=f"交易失敗: 購買數量必須大於 0", color=0xff0000)
     response = requests.post(
         f"{API_LINK}/trade/buy",
         json={
-            "team_name": get_team_name(user_id),
+            "team_name": get_team_id(user_id),
             "crypto_symbol": crypto_name.upper(),
             "quantity": abs(amount),
         },
     )
-    response.raise_for_status()
-    return response.json()
+    if response.status_code == 400:
+        return discord.Embed(title=f"交易失敗: 餘額不足", color=0xff0000)
+    elif response.status_code == 200:
+        return discord.Embed(title=f"{get_team_name(user_id)} 已買入 {amount} :otter:的 {crypto_name}", color=0x00ff00)
+    elif response.status_code == 404:
+        if response.json().get("detail").find("Crypto") != -1:
+            return discord.Embed(title=f"交易失敗: 找不到 {crypto_name.upper()} 這種虛擬貨幣", color=0xff0000)
+        elif response.json().get("detail").find("Team") != -1:
+            return discord.Embed(title=f"交易失敗: 找不到 {get_team_name(user_id)} 這個隊伍", color=0xff0000)
+    else:
+        response.raise_for_status()
 
 
-def sell(user_id, crypto_name: str, amount: float) -> dict:
+def sell(user_id, crypto_name: str, amount: float) -> discord.Embed:
+    if amount <= 0:
+        return discord.Embed(title=f"交易失敗: 賣出數量必須大於 0", color=0xff0000)
     """Sell `amount` units of `crypto_name` for the team linked to `user_id`."""
     response = requests.post(
         f"{API_LINK}/trade/sell",
         json={
-            "team_name": get_team_name(user_id),
+            "team_name": get_team_id(user_id),
             "crypto_symbol": crypto_name.upper(),
             "quantity": abs(amount),
         },
     )
-    response.raise_for_status()
-    return response.json()
+    if response.status_code == 400:
+        return discord.Embed(title=f"交易失敗: 持有的虛擬貨幣不足", color=0xff0000)
+    elif response.status_code == 404:
+        if response.json().get("detail").find("Crypto") != -1:
+            return discord.Embed(title=f"交易失敗: 找不到 {crypto_name.upper()} 這種虛擬貨幣", color=0xff0000)
+        elif response.json().get("detail").find("Team") != -1:
+            return discord.Embed(title=f"交易失敗: 找不到 {get_team_name(user_id)} 這個隊伍", color=0xff0000)
+    elif response.status_code == 200:
+        return discord.Embed(title=f"{get_team_name(user_id)} 已賣出 {amount} :otter:的 {crypto_name}", color=0xff0000)
+    else:
+        response.raise_for_status()
+
+
 
 
 # ── Queries ───────────────────────────────────────────────────────────────────
 
+async def crypto_autocomplete(interaction: discord.Interaction, current: str):
+    return [
+        app_commands.Choice(name=item[0], value=item[0])
+        for item in get_all_prices().keys()
+    ]
+
+crypto_ac = crypto_autocomplete
+
 def get_balance(user_id) -> float:
     """Return the team's current USD cash balance."""
-    team_name = get_team_name(user_id)
+    team_name = get_team_id(user_id)
     response = requests.get(f"{API_LINK}/teams/{team_name}")
     response.raise_for_status()
     return response.json()["balance"]
@@ -62,6 +115,26 @@ def get_crypto_price(crypto_name: str) -> float:
     response.raise_for_status()
     return response.json()["current_price"]
 
+def get_all_prices() -> dict[str, float]:
+    """Return all cryptocurrencies and their current prices as a dict."""
+    response = requests.get(f"{API_LINK}/cryptos")
+    response.raise_for_status()
+    return {(crypto["symbol"], crypto["name"]): crypto["current_price"] for crypto in response.json()}
+
+def get_portfolio(user_id) -> dict:
+    """Return the team's full portfolio: balance, holdings, and total value."""
+    team_name = get_team_id(user_id)
+    response = requests.get(f"{API_LINK}/teams/{team_name}")
+    response.raise_for_status()
+    return response.json()
+
+
+def get_trade_history(user_id, limit: int = 5) -> list[dict]:
+    """Return the team's trade history, newest first, capped at `limit` entries."""
+    team_name = get_team_id(user_id)
+    response = requests.get(f"{API_LINK}/teams/{team_name}/trades")
+    response.raise_for_status()
+    return response.json()[:limit]
 
 # ── Display ───────────────────────────────────────────────────────────────────
 
