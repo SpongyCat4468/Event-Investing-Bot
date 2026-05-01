@@ -12,6 +12,7 @@ permissions = [
     "host"
 ]
 
+
 def is_running(guild_id: int) -> bool:
     """Check if the game is currently running in a guild."""
     cursor.execute(
@@ -21,7 +22,7 @@ def is_running(guild_id: int) -> bool:
     row = cursor.fetchone()
     return bool(row[0]) if row else False
 
-def set_running(guild_id: int, state: bool) -> None:
+def set_running(guild_id: int, state: bool) -> discord.Embed:
     """Set the game running state for a guild."""
     cursor.execute(
         "INSERT INTO game_state (guild_id, is_running) VALUES (?, ?)"
@@ -29,6 +30,7 @@ def set_running(guild_id: int, state: bool) -> None:
         (guild_id, int(state))
     )
     db.commit()
+    return discord.Embed(title="遊戲狀態更新", description=f"遊戲已{'開始' if state else '結束'}", color=0x00ff00 if state else 0xff0000)
 
 async def ac(interaction: discord.Interaction, current: str):
     return [

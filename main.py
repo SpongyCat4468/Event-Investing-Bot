@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 import commands
 import help
-import permission
+import admin_commands
 
 import sqlite3
 
@@ -39,7 +39,7 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
     commands.setup(bot)
     help.setup(bot)
-    permission.setup(bot)
+    admin_commands.setup(bot)
     await bot.tree.sync()
 
 bot.run(os.getenv('TOKEN'))

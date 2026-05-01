@@ -88,8 +88,48 @@ def sell(user_id, crypto_name: str, amount: float) -> discord.Embed:
     else:
         response.raise_for_status()
 
+def reset_all() -> tuple[discord.Embed, discord.Embed, discord.Embed]:
+    team_ids = ["Zeroth", "First", "Second"]
+    team_names = ["零小", "一小", "二小"]
+    embeds = []
+    for idx, team in enumerate(team_ids):
+        response_balance = requests.post(
+            f"{API_LINK}/teams/{team}/reset/balance",
+            params={"balance": 0}
+        )
+        response_holdings = requests.post(
+            f"{API_LINK}/teams/{team}/reset/holdings",
+            json={"BTC": 0, "ETH": 0, "SOL": 0}
+        )
+        balance_success = response_balance.status_code == 200
+        holdings_success = response_holdings.status_code == 200
 
+        embeds.append(discord.Embed(
+            title=f"{team_names[idx]} 已重置", 
+            description=f"餘額重置{'成功' if balance_success else '失敗 ' + response_balance.json()['detail']}, \n持有量重置{'成功' if holdings_success else '失敗 ' + response_holdings.json()['detail']}",
+            color=0x00ff00 if balance_success and holdings_success else 0xff0000
+        ))
+    return embeds
 
+def set_balance(team_name: str, balance: int) -> discord.Embed:
+    response = requests.post(
+        f"{API_LINK}/teams/{team_name}/reset/balance",
+        params={"balance": balance}
+    )
+    if response.status_code == 200:
+        return discord.Embed(title=f"{get_team_name(team_name)} 的餘額已設置為 ${balance}", color=0x00ff00)
+    else:
+        return discord.Embed(title=f"{get_team_name(team_name)} 的餘額設置失敗", color=0xff0000)
+    
+def set_holdings(team_name: str, crypto_symbol: str, quantity: int) -> discord.Embed:
+    response = requests.post(
+        f"{API_LINK}/teams/{team_name}/reset/holdings",
+        json={crypto_symbol: quantity}
+    )
+    if response.status_code == 200:
+        return discord.Embed(title=f"{get_team_name(team_name)} 的 {crypto_symbol} 持有量已設置為 {quantity}", color=0x00ff00)
+    else:
+        return discord.Embed(title=f"{get_team_name(team_name)} 的 {crypto_symbol} 持有量設置失敗", color=0xff0000)
 
 # ── Queries ───────────────────────────────────────────────────────────────────
 

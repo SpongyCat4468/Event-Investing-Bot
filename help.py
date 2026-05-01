@@ -38,3 +38,38 @@ def setup(bot):
 
         embed.set_footer(text="輸入 <crypto_name> 時請使用幣種代號，例如：BTC、ETH")
         await interaction.followup.send(embed=embed)
+
+    @bot.tree.command(name="host_help", description="查看主持人指令說明")
+    async def host_help(interaction: discord.Interaction):
+        await interaction.response.defer()
+        embed = discord.Embed(title="主持人指令說明", color=0xFF5733)
+
+        embed.add_field(
+            name="遊戲控制",
+            value=(
+                "`/start_game <team_0> <team_1> <team_2>` — 開始遊戲並設定三隊初始資金\n"
+                "`/end_game` — 結束遊戲"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="隊伍管理",
+            value=(
+                "`/set_balance <team_name> <balance>` — 設定指定隊伍的現金餘額\n"
+                "`/set_holdings <team_name> <crypto_name> <amount>` — 設定指定隊伍的持幣數量"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="權限管理",
+            value=(
+                "`/add_permission <user> <permission>` — 授予使用者指定權限\n"
+                "`/remove_permission <user> <permission>` — 移除使用者指定權限"
+            ),
+            inline=False,
+        )
+
+        embed.set_footer(text="此指令僅限主持人使用")
+        await interaction.followup.send(embed=embed, ephemeral=True)
