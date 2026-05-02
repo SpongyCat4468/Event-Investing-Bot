@@ -3,7 +3,7 @@ from discord.ext import commands as cmd
 import os
 from dotenv import load_dotenv
 
-import commands
+import user_commands
 import help
 import admin_commands
 
@@ -37,7 +37,7 @@ db.commit()
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
-    commands.setup(bot)
+    user_commands.setup(bot)
     help.setup(bot)
     admin_commands.setup(bot)
     await bot.tree.sync()

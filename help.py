@@ -57,7 +57,13 @@ def setup(bot):
             name="隊伍管理",
             value=(
                 "`/set_balance <team_name> <balance>` — 設定指定隊伍的現金餘額\n"
-                "`/set_holdings <team_name> <crypto_name> <amount>` — 設定指定隊伍的持幣數量"
+                "`/set_holdings <team_name> <crypto_name> <amount>` — 設定指定隊伍的持幣數量\n"
+                "`/multiply_balance <team_name> <multiplier>` — 將指定隊伍的現金餘額乘上乘數\n"
+                "`/multiply_holdings <team_name> <crypto_name> <multiplier>` — 將指定隊伍的持幣數量乘上乘數\n"
+                "`/add_balance <team_name> <amount>` — 為指定隊伍增加現金餘額\n"
+                "`/add_holdings <team_name> <crypto_name> <amount>` — 為指定隊伍增加持幣數量\n"
+                "`/remove_balance <team_name> <amount>` — 從指定隊伍減少現金餘額\n"
+                "`/remove_holdings <team_name> <crypto_name> <amount>` — 從指定隊伍減少持幣數量"
             ),
             inline=False,
         )

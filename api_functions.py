@@ -2,8 +2,9 @@ import requests
 import json
 import discord
 from discord import app_commands
+from data import API_LINK
+import data
 
-API_LINK = "http://127.0.0.1:8000"
 
 
 # ── Mapping ───────────────────────────────────────────────────────────────────
@@ -22,11 +23,9 @@ def get_team_name(id: int | str) -> str:
         team = id_map.get(str(id))
         if team is None:
             raise ValueError(f"User ID {id} is not registered in id.json")
-        teams = {"Zeroth": "零小", "First": "一小", "Second": "二小"}
-        return teams[team]
+        return data.TEAM_ID_TO_NAME[team]
     elif id.__class__ == str:
-        teams = {"Zeroth": "零小", "First": "一小", "Second": "二小"}
-        return teams[id]
+        return data.TEAM_ID_TO_NAME[id]
 
 def get_team_id(user_id) -> str:
     with open("id.json", "r") as f:
@@ -37,7 +36,7 @@ def get_team_id(user_id) -> str:
     return team
 
 
-# ── Trading ───────────────────────────────────────────────────────────────────
+# ── Set ───────────────────────────────────────────────────────────────────
 
 def buy(user_id, crypto_name: str, amount: float) -> discord.Embed:
     """Buy `amount` units of `crypto_name` for the team linked to `user_id`."""
@@ -89,10 +88,8 @@ def sell(user_id, crypto_name: str, amount: float) -> discord.Embed:
         response.raise_for_status()
 
 def reset_all() -> tuple[discord.Embed, discord.Embed, discord.Embed]:
-    team_ids = ["Zeroth", "First", "Second"]
-    team_names = ["零小", "一小", "二小"]
     embeds = []
-    for idx, team in enumerate(team_ids):
+    for idx, team in enumerate(data.TEAM_IDS):
         response_balance = requests.post(
             f"{API_LINK}/teams/{team}/reset/balance",
             params={"balance": 0}
@@ -105,7 +102,7 @@ def reset_all() -> tuple[discord.Embed, discord.Embed, discord.Embed]:
         holdings_success = response_holdings.status_code == 200
 
         embeds.append(discord.Embed(
-            title=f"{team_names[idx]} 已重置", 
+            title=f"{data.TEAM_NAMES[idx]} 已重置", 
             description=f"餘額重置{'成功' if balance_success else '失敗 ' + response_balance.json()['detail']}, \n持有量重置{'成功' if holdings_success else '失敗 ' + response_holdings.json()['detail']}",
             color=0x00ff00 if balance_success and holdings_success else 0xff0000
         ))
@@ -130,13 +127,106 @@ def set_holdings(team_name: str, crypto_symbol: str, quantity: int) -> discord.E
         return discord.Embed(title=f"{get_team_name(team_name)} 的 {crypto_symbol} 持有量已設置為 {quantity}", color=0x00ff00)
     else:
         return discord.Embed(title=f"{get_team_name(team_name)} 的 {crypto_symbol} 持有量設置失敗", color=0xff0000)
+    
+def multiply_balance(user_id, multiplier: float) -> discord.Embed:
+    team_name = get_team_id(user_id)
+    portfolio = get_portfolio(user_id)
+    new_balance = portfolio["balance"] * multiplier
+    response = requests.post(
+        f"{API_LINK}/teams/{team_name}/reset/balance",
+        params={"balance": new_balance}
+    )
+    if response.status_code == 200:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的餘額已乘以 {multiplier}，新餘額為 ${new_balance:.2f}", color=0x00ff00)
+    else:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的餘額乘法操作失敗", color=0xff0000)
+    
+def multiply_holdings(user_id, crypto_symbol: str, multiplier: float) -> discord.Embed:
+    team_name = get_team_id(user_id)
+    portfolio = get_portfolio(user_id)
+    current_quantity = 0
+    for holding in portfolio["holdings"]:
+        if holding["crypto_symbol"] == crypto_symbol:
+            current_quantity = holding["quantity"]
+            break
+    new_quantity = current_quantity * multiplier
+    response = requests.post(
+        f"{API_LINK}/teams/{team_name}/reset/holdings",
+        json={crypto_symbol: new_quantity}
+    )
+    if response.status_code == 200:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的 {crypto_symbol} 持有量已乘以 {multiplier}，新持有量為 {new_quantity:.4f}", color=0x00ff00)
+    else:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的 {crypto_symbol} 持有量乘法操作失敗", color=0xff0000)
+    
+def add_balance(user_id, amount: float) -> discord.Embed:
+    team_name = get_team_id(user_id)
+    portfolio = get_portfolio(user_id)
+    new_balance = portfolio["balance"] + amount
+    response = requests.post(
+        f"{API_LINK}/teams/{team_name}/reset/balance",
+        params={"balance": new_balance}
+    )
+    if response.status_code == 200:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的餘額已增加 {amount}，新餘額為 ${new_balance:.2f}", color=0x00ff00)
+    else:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的餘額增加操作失敗", color=0xff0000)
+    
+def remove_balance(user_id, amount: float) -> discord.Embed:
+    team_name = get_team_id(user_id)
+    portfolio = get_portfolio(user_id)
+    new_balance = portfolio["balance"] - amount
+    response = requests.post(
+        f"{API_LINK}/teams/{team_name}/reset/balance",
+        params={"balance": new_balance}
+    )
+    if response.status_code == 200:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的餘額已減少 {amount}，新餘額為 ${new_balance:.2f}", color=0x00ff00)
+    else:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的餘額減少操作失敗", color=0xff0000)
+    
+def add_holdings(user_id, crypto_symbol: str, amount: float) -> discord.Embed:
+    team_name = get_team_id(user_id)
+    portfolio = get_portfolio(user_id)
+    current_quantity = 0
+    for holding in portfolio["holdings"]:
+        if holding["crypto_symbol"] == crypto_symbol:
+            current_quantity = holding["quantity"]
+            break
+    new_quantity = current_quantity + amount
+    response = requests.post(
+        f"{API_LINK}/teams/{team_name}/reset/holdings",
+        json={crypto_symbol: new_quantity}
+    )
+    if response.status_code == 200:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的 {crypto_symbol} 持有量已增加 {amount}，新持有量為 {new_quantity:.4f}", color=0x00ff00)
+    else:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的 {crypto_symbol} 持有量增加操作失敗", color=0xff0000)
+    
+def remove_holdings(user_id, crypto_symbol: str, amount: float) -> discord.Embed:
+    team_name = get_team_id(user_id)
+    portfolio = get_portfolio(user_id)
+    current_quantity = 0
+    for holding in portfolio["holdings"]:
+        if holding["crypto_symbol"] == crypto_symbol:
+            current_quantity = holding["quantity"]
+            break
+    new_quantity = current_quantity - amount
+    response = requests.post(
+        f"{API_LINK}/teams/{team_name}/reset/holdings",
+        json={crypto_symbol: new_quantity}
+    )
+    if response.status_code == 200:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的 {crypto_symbol} 持有量已減少 {amount}，新持有量為 {new_quantity:.4f}", color=0x00ff00)
+    else:
+        return discord.Embed(title=f"{get_team_name(user_id)} 的 {crypto_symbol} 持有量減少操作失敗", color=0xff0000)
 
-# ── Queries ───────────────────────────────────────────────────────────────────
+# ── Get ───────────────────────────────────────────────────────────────────
 
 async def crypto_autocomplete(interaction: discord.Interaction, current: str):
     return [
-        app_commands.Choice(name=item[0], value=item[0])
-        for item in get_all_prices().keys()
+        app_commands.Choice(name=item, value=item)
+        for item in data.CRYPTO_SYMBOLS
     ]
 
 crypto_ac = crypto_autocomplete
@@ -147,7 +237,6 @@ def get_balance(user_id) -> float:
     response = requests.get(f"{API_LINK}/teams/{team_name}")
     response.raise_for_status()
     return response.json()["balance"]
-
 
 def get_crypto_price(crypto_name: str) -> float:
     """Return the current price of a cryptocurrency."""
