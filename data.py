@@ -12,6 +12,8 @@ CRYPTO_NAMES = ["Bitcoin", "Ethereum", "Solana"]
 
 API_LINK = "http://127.0.0.1:8000"
 
+CRYPTO_CHANGE_RATE = 0.05
+
 async def team_ac(interaction: discord.Interaction, current: str):
     return [
         app_commands.Choice(name=T, value=T)

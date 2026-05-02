@@ -265,6 +265,11 @@ def get_trade_history(user_id, limit: int = 5) -> list[dict]:
     response.raise_for_status()
     return response.json()[:limit]
 
+def update_prices(crypto_name: str) -> None:
+    """Trigger the API to update cryptocurrency prices from CoinGecko."""
+    response = requests.post(f"{API_LINK}/cryptos/{crypto_name.upper()}", json={"action": "update"})
+    response.raise_for_status()
+
 # ── Display ───────────────────────────────────────────────────────────────────
 
 def show_database():

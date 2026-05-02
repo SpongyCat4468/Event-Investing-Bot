@@ -5,6 +5,7 @@ import permissions as perms
 from discord.ext import commands
 import api_functions as api
 from data import team_ac
+from crypto_adjust import update_prices_loop
 
 def is_admin(interaction: discord.Interaction, permission: str = "admin") -> bool:
     return interaction.user.guild_permissions.administrator
@@ -41,6 +42,7 @@ def setup(bot: commands.Bot):
                                                 api.set_balance("First", team_1), 
                                                 api.set_balance("Second", team_2), 
                                                 perms.set_running(True)))
+        update_prices_loop.start()
         
     @bot.tree.command(name="end_game")
     @perms.require_permission("host")
@@ -50,6 +52,7 @@ def setup(bot: commands.Bot):
             await interaction.followup.send(embed=discord.Embed(title="遊戲已經結束了", description="請勿重複結束遊戲", color=0xff0000), ephemeral=True)
             return
         await interaction.followup.send(embed=perms.set_running(False))
+        update_prices_loop.stop()
 
     @bot.tree.command(name="set_balance")
     @app_commands.describe(team_name="隊伍名稱", balance="初始資金")
