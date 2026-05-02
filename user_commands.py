@@ -1,6 +1,7 @@
 import discord
 import api_functions as api
 from discord import app_commands
+from data import team_ac
 import permissions as perms
 
 
@@ -10,7 +11,7 @@ def setup(bot: discord.ext.commands.Bot):
     @app_commands.autocomplete(crypto_name=api.crypto_ac)
     async def buy(interaction: discord.Interaction, crypto_name: str, amount: int):
         await interaction.response.defer()
-        if not perms.is_running(interaction.guild_id):
+        if not perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲尚未開始", description="請稍後再試", color=0xff0000), ephemeral=True)
             return
         user_id = interaction.user.id
@@ -21,7 +22,7 @@ def setup(bot: discord.ext.commands.Bot):
     @app_commands.autocomplete(crypto_name=api.crypto_ac)
     async def sell(interaction: discord.Interaction, crypto_name: str, amount: int):
         await interaction.response.defer()
-        if not perms.is_running(interaction.guild_id):
+        if not perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲尚未開始", description="請稍後再試", color=0xff0000), ephemeral=True)
             return
         user_id = interaction.user.id
@@ -31,7 +32,7 @@ def setup(bot: discord.ext.commands.Bot):
     @bot.tree.command(name="balance", description="查詢團隊餘額")
     async def balance(interaction: discord.Interaction):
         await interaction.response.defer()
-        if not perms.is_running(interaction.guild_id):
+        if not perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲尚未開始", description="請稍後再試", color=0xff0000), ephemeral=True)
             return
         user_id = interaction.user.id
@@ -42,7 +43,7 @@ def setup(bot: discord.ext.commands.Bot):
     @bot.tree.command(name="whoami", description="查詢團隊名稱")
     async def whoami(interaction: discord.Interaction):
         await interaction.response.defer()
-        if not perms.is_running(interaction.guild_id):
+        if not perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲尚未開始", description="請稍後再試", color=0xff0000), ephemeral=True)
             return
         user_id = interaction.user.id
@@ -52,7 +53,7 @@ def setup(bot: discord.ext.commands.Bot):
     @bot.tree.command(name="leaderboard", description="查詢排行榜")
     async def leaderboard(interaction: discord.Interaction):
         await interaction.response.defer()
-        if not perms.is_running(interaction.guild_id):
+        if not perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲尚未開始", description="請稍後再試", color=0xff0000), ephemeral=True)
             return
         board = api.get_leaderboard()
@@ -70,7 +71,7 @@ def setup(bot: discord.ext.commands.Bot):
     @app_commands.autocomplete(crypto_name=api.crypto_ac)
     async def price(interaction: discord.Interaction, crypto_name: str):
         await interaction.response.defer()
-        if not perms.is_running(interaction.guild_id):
+        if not perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲尚未開始", description="請稍後再試", color=0xff0000), ephemeral=True)
             return
         current_price = api.get_crypto_price(crypto_name)
@@ -84,7 +85,7 @@ def setup(bot: discord.ext.commands.Bot):
     @bot.tree.command(name="prices", description="查詢所有虛擬貨幣價格")
     async def prices(interaction: discord.Interaction):
         await interaction.response.defer()
-        if not perms.is_running(interaction.guild_id):
+        if not perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲尚未開始", description="請稍後再試", color=0xff0000), ephemeral=True)
             return
         all_cryptos = api.get_all_prices()
@@ -98,14 +99,24 @@ def setup(bot: discord.ext.commands.Bot):
         await interaction.followup.send(embed=embed)
  
     @bot.tree.command(name="portfolio", description="查詢團隊持倉")
-    async def portfolio(interaction: discord.Interaction):
+    @app_commands.describe(team_id="隊伍ID")
+    @app_commands.autocomplete(team_id=team_ac)
+    async def portfolio(interaction: discord.Interaction, team_id: str = None):
         await interaction.response.defer()
-        if not perms.is_running(interaction.guild_id):
+        if not perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲尚未開始", description="請稍後再試", color=0xff0000), ephemeral=True)
             return
         user_id = interaction.user.id
-        team_name = api.get_team_name(user_id)
-        data = api.get_portfolio(user_id)
+        if team_id == None:
+            team_name = api.get_team_name(user_id)
+            data = api.get_portfolio(user_id)
+        else:
+            if not perms.has_permission(interaction, "host"):
+                await interaction.followup.send(embed=discord.Embed(title="權限不足", description="只有主持人可以查詢其他隊伍的持倉", color=0xff0000), ephemeral=True)
+                return
+            else:
+                team_name = api.get_team_name(team_id)
+                data = api.get_portfolio_team(team_id)
         holdings = data["holdings"]
  
         embed = discord.Embed(title=f"{team_name} 的持倉", color=0x00bfff)
@@ -128,7 +139,7 @@ def setup(bot: discord.ext.commands.Bot):
     @bot.tree.command(name="history", description="查詢團隊近期交易紀錄")
     async def history(interaction: discord.Interaction):
         await interaction.response.defer()
-        if not perms.is_running(interaction.guild_id):
+        if not perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲尚未開始", description="請稍後再試", color=0xff0000), ephemeral=True)
             return
         user_id = interaction.user.id

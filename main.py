@@ -20,16 +20,16 @@ bot = cmd.Bot(command_prefix='!', intents=intents)
 
 cursor.executescript("""
     CREATE TABLE IF NOT EXISTS user_permissions (
-        guild_id   INTEGER NOT NULL,
         user_id    INTEGER NOT NULL,
         permission TEXT    NOT NULL,
-        PRIMARY KEY (guild_id, user_id, permission)
+        PRIMARY KEY (user_id, permission)
     );
                      
     CREATE TABLE IF NOT EXISTS game_state (
-        guild_id   INTEGER NOT NULL PRIMARY KEY,
-        is_running INTEGER NOT NULL DEFAULT 0
-    );
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    is_running INTEGER NOT NULL DEFAULT 0,
+    CHECK (id = 1)  -- enforces only one row ever exists
+)
 """)
 
 db.commit()

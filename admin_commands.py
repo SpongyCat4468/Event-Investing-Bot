@@ -4,6 +4,7 @@ from discord import app_commands
 import permissions as perms
 from discord.ext import commands
 import api_functions as api
+from data import team_ac
 
 def is_admin(interaction: discord.Interaction, permission: str = "admin") -> bool:
     return interaction.user.guild_permissions.administrator
@@ -14,7 +15,7 @@ def setup(bot: commands.Bot):
     @app_commands.autocomplete(permission=perms.ac)
     @perms.require_permission("host")
     async def add_permission(interaction: discord.Interaction, user: discord.Member, permission: str):
-        perms.add_permission(interaction.guild_id, user.id, permission)
+        perms.add_permission(user.id, permission)
         await interaction.response.send_message(f"Granted {permission} permission to {user.mention}.")
 
     @bot.tree.command(name="remove_permission")
@@ -31,7 +32,7 @@ def setup(bot: commands.Bot):
     @perms.require_permission("host")
     async def start_game(interaction: discord.Interaction, team_0: int, team_1: int, team_2: int):
         await interaction.response.defer()
-        if perms.is_running(interaction.guild_id):
+        if perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲已經開始了", description="請勿重複開始遊戲", color=0xff0000), ephemeral=True)
             return
     
@@ -39,19 +40,20 @@ def setup(bot: commands.Bot):
                                                 api.set_balance("Zeroth", team_0), 
                                                 api.set_balance("First", team_1), 
                                                 api.set_balance("Second", team_2), 
-                                                perms.set_running(interaction.guild_id, True)))
+                                                perms.set_running(True)))
         
     @bot.tree.command(name="end_game")
     @perms.require_permission("host")
     async def end_game(interaction: discord.Interaction):
         await interaction.response.defer()
-        if not perms.is_running(interaction.guild_id):
+        if not perms.is_running():
             await interaction.followup.send(embed=discord.Embed(title="遊戲已經結束了", description="請勿重複結束遊戲", color=0xff0000), ephemeral=True)
             return
-        await interaction.followup.send(embed=perms.set_running(interaction.guild_id, False))
+        await interaction.followup.send(embed=perms.set_running(False))
 
     @bot.tree.command(name="set_balance")
     @app_commands.describe(team_name="隊伍名稱", balance="初始資金")
+    @app_commands.autocomplete(team_name=team_ac)
     @perms.require_permission("host")
     async def set_balance(interaction: discord.Interaction, team_name: str, balance: int):
         await interaction.response.defer()
@@ -59,53 +61,56 @@ def setup(bot: commands.Bot):
 
     @bot.tree.command(name="set_holdings")
     @app_commands.describe(team_name="隊伍名稱", crypto_name="虛擬貨幣名稱", amount="持有數量")
-    @app_commands.autocomplete(crypto_name=api.crypto_ac)
+    @app_commands.autocomplete(team_name=team_ac, crypto_name=api.crypto_ac)
     @perms.require_permission("host")
     async def set_holdings(interaction: discord.Interaction, team_name: str, crypto_name: str, amount: int):
         await interaction.response.defer()
         await interaction.followup.send(embed=api.set_holdings(team_name, crypto_name, amount))
     
     @bot.tree.command(name="multiply_balance")
-    @app_commands.describe(team_name="隊伍名稱", multiplier="乘數")
+    @app_commands.describe(team_id="隊伍ID", multiplier="乘數")
+    @app_commands.autocomplete(team_id=team_ac)
     @perms.require_permission("host")
-    async def multiply_balance(interaction: discord.Interaction, team_name: str, multiplier: float):
+    async def multiply_balance(interaction: discord.Interaction, team_id: str, multiplier: float):
         await interaction.response.defer()
-        await interaction.followup.send(embed=api.multiply_balance(team_name, multiplier))
+        await interaction.followup.send(embed=api.multiply_balance(team_id, multiplier))
 
     @bot.tree.command(name="multiply_holdings")
-    @app_commands.describe(team_name="隊伍名稱", crypto_name="虛擬貨幣名稱", multiplier="乘數")
-    @app_commands.autocomplete(crypto_name=api.crypto_ac)
+    @app_commands.describe(team_id="隊伍ID", crypto_name="虛擬貨幣名稱", multiplier="乘數")
+    @app_commands.autocomplete(team_id=team_ac, crypto_name=api.crypto_ac)
     @perms.require_permission("host")
-    async def multiply_holdings(interaction: discord.Interaction, team_name: str, crypto_name: str, multiplier: float):
+    async def multiply_holdings(interaction: discord.Interaction, team_id: str, crypto_name: str, multiplier: float):
         await interaction.response.defer()
-        await interaction.followup.send(embed=api.multiply_holdings(team_name, crypto_name, multiplier))
+        await interaction.followup.send(embed=api.multiply_holdings(team_id, crypto_name, multiplier))
 
     @bot.tree.command(name="add_balance")
-    @app_commands.describe(team_name="隊伍名稱", amount="增加的金額")
+    @app_commands.describe(team_id="隊伍ID", amount="增加的金額")
+    @app_commands.autocomplete(team_id=team_ac)
     @perms.require_permission("host")
-    async def add_balance(interaction: discord.Interaction, team_name: str, amount: int):
+    async def add_balance(interaction: discord.Interaction, team_id: str, amount: int):
         await interaction.response.defer()
-        await interaction.followup.send(embed=api.add_balance(team_name, amount))
-    
+        await interaction.followup.send(embed=api.add_balance(team_id, amount))
+
     @bot.tree.command(name="add_holdings")
-    @app_commands.describe(team_name="隊伍名稱", crypto_name="虛擬貨幣名稱", amount="增加的持有數量")
-    @app_commands.autocomplete(crypto_name=api.crypto_ac)
+    @app_commands.describe(team_id="隊伍ID", crypto_name="虛擬貨幣名稱", amount="增加的持有數量")
+    @app_commands.autocomplete(team_id=team_ac, crypto_name=api.crypto_ac)
     @perms.require_permission("host")
-    async def add_holdings(interaction: discord.Interaction, team_name: str, crypto_name: str, amount: int):
+    async def add_holdings(interaction: discord.Interaction, team_id: str, crypto_name: str, amount: int):
         await interaction.response.defer()
-        await interaction.followup.send(embed=api.add_holdings(team_name, crypto_name, amount))
+        await interaction.followup.send(embed=api.add_holdings(team_id, crypto_name, amount))
 
     @bot.tree.command(name="remove_balance")
-    @app_commands.describe(team_name="隊伍名稱", amount="減少的金額")
+    @app_commands.describe(team_id="隊伍ID", amount="減少的金額")
+    @app_commands.autocomplete(team_id=team_ac) 
     @perms.require_permission("host")
-    async def remove_balance(interaction: discord.Interaction, team_name: str, amount: int):
+    async def remove_balance(interaction: discord.Interaction, team_id: str, amount: int):
         await interaction.response.defer()
-        await interaction.followup.send(embed=api.remove_balance(team_name, amount))
+        await interaction.followup.send(embed=api.remove_balance(team_id, amount))
 
     @bot.tree.command(name="remove_holdings")
-    @app_commands.describe(team_name="隊伍名稱", crypto_name="虛擬貨幣名稱", amount="減少的持有數量")
-    @app_commands.autocomplete(crypto_name=api.crypto_ac)
+    @app_commands.describe(team_id="隊伍ID", crypto_name="虛擬貨幣名稱", amount="減少的持有數量")
+    @app_commands.autocomplete(team_id=team_ac, crypto_name=api.crypto_ac)
     @perms.require_permission("host")
-    async def remove_holdings(interaction: discord.Interaction, team_name: str, crypto_name: str, amount: int):
+    async def remove_holdings(interaction: discord.Interaction, team_id: str, crypto_name: str, amount: int):
         await interaction.response.defer()
-        await interaction.followup.send(embed=api.remove_holdings(team_name, crypto_name, amount))
+        await interaction.followup.send(embed=api.remove_holdings(team_id, crypto_name, amount))

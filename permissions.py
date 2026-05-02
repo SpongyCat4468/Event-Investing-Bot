@@ -13,21 +13,16 @@ permissions = [
 ]
 
 
-def is_running(guild_id: int) -> bool:
-    """Check if the game is currently running in a guild."""
-    cursor.execute(
-        "SELECT is_running FROM game_state WHERE guild_id = ?",
-        (guild_id,)
-    )
+def is_running() -> bool:
+    cursor.execute("SELECT is_running FROM game_state WHERE id = 1")
     row = cursor.fetchone()
     return bool(row[0]) if row else False
 
-def set_running(guild_id: int, state: bool) -> discord.Embed:
-    """Set the game running state for a guild."""
+def set_running(state: bool) -> discord.Embed:
     cursor.execute(
-        "INSERT INTO game_state (guild_id, is_running) VALUES (?, ?)"
-        " ON CONFLICT(guild_id) DO UPDATE SET is_running = excluded.is_running",
-        (guild_id, int(state))
+        "INSERT INTO game_state (id, is_running) VALUES (1, ?)"
+        " ON CONFLICT(id) DO UPDATE SET is_running = excluded.is_running",
+        (int(state),)
     )
     db.commit()
     return discord.Embed(title="遊戲狀態更新", description=f"遊戲已{'開始' if state else '結束'}", color=0x00ff00 if state else 0xff0000)
@@ -39,30 +34,20 @@ async def ac(interaction: discord.Interaction, current: str):
         if current.lower() in p.lower()
     ][:25]
 
-
-def get_permission(guild_id: int, user_id: int) -> tuple[str]:
-    """Return all permissions a user has in a guild."""
-    cursor.execute(
-        "SELECT permission FROM user_permissions WHERE guild_id = ? AND user_id = ?",
-        (guild_id, user_id)
-    )
-    return tuple(row[0] for row in cursor.fetchall())
-
-
-def add_permission(guild_id: int, user_id: int, permission: str) -> None:
+def add_permission(user_id: int, permission: str) -> None:
     """Assign a permission to a user in a guild."""
     cursor.execute(
-        "INSERT OR IGNORE INTO user_permissions (guild_id, user_id, permission) VALUES (?, ?, ?)",
-        (guild_id, user_id, permission)
+        "INSERT OR IGNORE INTO user_permissions (user_id, permission) VALUES (?, ?)",
+        (user_id, permission)
     )
     db.commit()
 
 
-def remove_permission(guild_id: int, user_id: int, permission: str) -> None:
+def remove_permission(user_id: int, permission: str) -> None:
     """Remove a permission from a user in a guild."""
     cursor.execute(
-        "DELETE FROM user_permissions WHERE guild_id = ? AND user_id = ? AND permission = ?",
-        (guild_id, user_id, permission)
+        "DELETE FROM user_permissions WHERE user_id = ? AND permission = ?",
+        (user_id, permission)
     )
     db.commit()
 
@@ -70,8 +55,8 @@ def remove_permission(guild_id: int, user_id: int, permission: str) -> None:
 def has_permission(interaction: discord.Interaction, permission: str) -> bool:
     """Check if the interaction author has a given permission in the guild."""
     cursor.execute(
-        "SELECT 1 FROM user_permissions WHERE guild_id = ? AND user_id = ? AND permission = ? LIMIT 1",
-        (interaction.guild.id, interaction.user.id, permission)
+        "SELECT 1 FROM user_permissions WHERE  user_id = ? AND permission = ? LIMIT 1",
+        (interaction.user.id, permission)
     )
     return cursor.fetchone() is not None
 
