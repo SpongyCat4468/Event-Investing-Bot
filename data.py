@@ -2,13 +2,22 @@ from discord import app_commands
 import discord
 
 
+
 TEAM_NAMES = ["零小", "一小", "二小"]
 TEAM_IDS = ["Zeroth", "First", "Second"]
 TEAM_NAME_TO_ID = dict(zip(TEAM_NAMES, TEAM_IDS))
 TEAM_ID_TO_NAME = dict(zip(TEAM_IDS, TEAM_NAMES))
 
-CRYPTO_SYMBOLS = ["BTC", "ETH", "SOL"]
-CRYPTO_NAMES = ["Bitcoin", "Ethereum", "Solana"]
+ANNOUNCEMENT_CHANNEL_ID = 1372154718117298199
+# 1499415689063174164
+
+
+CRYPTO_SYMBOLS = ["IZCC", "INFOR", "CMIOC"]
+CRYPTO_VALUES = {
+    "IZCC": 116,
+    "INFOR": 38,
+    "CMIOC": 32
+}
 
 API_LINK = "http://127.0.0.1:8000"
 

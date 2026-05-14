@@ -9,6 +9,8 @@ import admin_commands
 
 import sqlite3
 
+import permissions as perms
+
 DB_PATH = "data.db"
 db = sqlite3.connect(DB_PATH)
 cursor = db.cursor()
@@ -41,5 +43,7 @@ async def on_ready():
     help.setup(bot)
     admin_commands.setup(bot)
     await bot.tree.sync()
+
+        
 
 bot.run(os.getenv('TOKEN'))
