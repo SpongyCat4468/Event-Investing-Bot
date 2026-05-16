@@ -44,6 +44,4 @@ async def on_ready():
     admin_commands.setup(bot)
     await bot.tree.sync()
 
-        
-
 bot.run(os.getenv('TOKEN'))
